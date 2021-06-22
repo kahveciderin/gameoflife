@@ -147,7 +147,7 @@ int main(int argc, char *argv[])
                     survive[1] = 3;
                 }
 
-                printf("born: %d %d %d %d %d %d %d %d %d %d survive: %d %d %d %d %d %d %d %d %d %d", born[0], born[1], born[2], born[3], born[4], born[5], born[6], born[7], born[8], born[9], survive[0], survive[1], survive[2], survive[3], survive[4], survive[5], survive[6], survive[7], survive[8], survive[9]);
+                printf("born: %d %d %d %d %d %d %d %d %d %d survive: %d %d %d %d %d %d %d %d %d %d\n", born[0], born[1], born[2], born[3], born[4], born[5], born[6], born[7], born[8], born[9], survive[0], survive[1], survive[2], survive[3], survive[4], survive[5], survive[6], survive[7], survive[8], survive[9]);
             }
             else
             {
