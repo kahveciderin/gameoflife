@@ -29,6 +29,7 @@ int valueinarray(uint8_t val, uint8_t arr[])
 int main(int argc, char *argv[])
 {
 
+    srand(time(NULL));
     SDL_Window *window;
     SDL_Renderer *renderer;
     SDL_CreateWindowAndRenderer(GRIDSIZE * SCALE, GRIDSIZE * SCALE, 0, &window, &renderer);
@@ -91,9 +92,16 @@ int main(int argc, char *argv[])
     int lineno = 0;
     string data;
     int xval, yval;
+
+    bool randomData = false;
     while (getline(file, linefi))
     {
-
+        if(linefi.at(0) == '#' && linefi.at(1) == '!'){
+            born[0] = 3;
+            survive[0] = 2;
+            survive[1] = 3;
+            randomData = true;
+        }
         if (linefi.at(0) != '#')
         {
             if (lineno == 0)
@@ -153,6 +161,15 @@ int main(int argc, char *argv[])
     // printf("%s", data.c_str());
     int tmpx = (GRIDSIZE - xval) / 2;
     int tmpy = (GRIDSIZE - yval) / 2;
+
+    if(randomData){
+        printf("fill with random data\n");
+        for(int y_gb = 0; y_gb < GRIDSIZE; y_gb++){
+            for(int x_gb = 0; x_gb < GRIDSIZE; x_gb++){
+                lines[y_gb].setbit(x_gb, (0 + (rand() % (1 - 0 + 1))));
+            }
+        }
+    }else{
     for (int i = 0; i < data.length(); i++)
     {
         if (data.at(i) == '$' || data.at(i) == '!')
@@ -203,6 +220,7 @@ int main(int argc, char *argv[])
             tmpx++;
             //printf(".");
         }
+    }
     }
 
     bool run = 1;
