@@ -97,9 +97,6 @@ int main(int argc, char *argv[])
     while (getline(file, linefi))
     {
         if(linefi.at(0) == '#' && linefi.at(1) == '!'){
-            born[0] = 3;
-            survive[0] = 2;
-            survive[1] = 3;
             randomData = true;
         }
         if (linefi.at(0) != '#')
@@ -321,11 +318,11 @@ int main(int argc, char *argv[])
                 //     lines[i].setbit(j, 0);
                 // }
 
-                if (neighbours == 3)
+                if (neighbours == born[0] || neighbours == born[1] || neighbours == born[2] || neighbours == born[3] || neighbours == born[4] || neighbours == born[5] || neighbours == born[6] || neighbours == born[7] || neighbours == born[8] || neighbours == born[9])
                 {
                     lines[i].setbit(j, 1);
                 }
-                else if (neighbours == 2 || neighbours == 3)
+                else if (neighbours == survive[0] || neighbours == survive[1] || neighbours == survive[2] || neighbours == survive[3] || neighbours == survive[4] || neighbours == survive[5] || neighbours == survive[6] || neighbours == survive[7] || neighbours == survive[8] || neighbours == survive[9])
                 {
                 }
                 else
