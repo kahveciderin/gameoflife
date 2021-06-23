@@ -1,3 +1,6 @@
+#define CL_HPP_ENABLE_EXCEPTIONS
+#define CL_HPP_TARGET_OPENCL_VERSION 200
+
 #include <stdlib.h>
 
 #include <SDL2/SDL.h>
@@ -13,7 +16,7 @@
 #ifdef __APPLE__
 #include <OpenCL/opencl.h>
 #else
-#include <CL/cl.h>
+#include <CL/cl2.hpp>
 #endif
 
 #define MAX_SOURCE_SIZE (0x100000)
@@ -27,8 +30,8 @@ using namespace std;
 //#define RGB
 
 const char *getErrorString(cl_int error) {
-  if (error == CL_SUCCESS)
-    return NULL;
+  // if (error == CL_SUCCESS)
+  //   return NULL;
   switch (error) {
   // run-time and JIT compiler errors
   case 0:
@@ -173,9 +176,31 @@ float timedifference_msec(struct timeval t0, struct timeval t1) {
   return (t1.tv_sec - t0.tv_sec) * 1000.0f +
          (t1.tv_usec - t0.tv_usec) / 1000.0f;
 }
+cl::Platform findCL2Platform() {
+  std::vector<cl::Platform> platforms;
+  cl::Platform::get(&platforms);
 
+  for (auto &p : platforms) {
+    std::string version = p.getInfo<CL_PLATFORM_VERSION>();
+    if (version.find("OpenCL 2.") != std::string::npos) {
+      return p;
+    }
+  }
+  return cl::Platform();
+}
 int main(int argc, char *argv[]) {
+  cl::Platform platform = findCL2Platform();
 
+  if (0 == platform()) {
+    std::cerr << "No OpenCL 2 platform found.\n";
+    return EXIT_FAILURE;
+  }
+
+  cl::Platform defaultPlatform = cl::Platform::setDefault(platform);
+  if (defaultPlatform != platform) {
+    std::cerr << "Error setting default platform\n";
+    return EXIT_FAILURE;
+  }
   FILE *fp;
   char *source_str;
   size_t source_size;
@@ -188,44 +213,33 @@ int main(int argc, char *argv[]) {
   source_size = fread(source_str, 1, MAX_SOURCE_SIZE, fp);
   fclose(fp);
 
-  // Get platform and device information
-  cl_platform_id platform_id = NULL;
-  cl_device_id device_id = NULL;
-  cl_uint ret_num_devices;
-  cl_uint ret_num_platforms;
-  cl_int ret = clGetPlatformIDs(1, &platform_id, &ret_num_platforms);
-  std::cerr << getErrorString(ret) << std::endl;
-  ret = clGetDeviceIDs(platform_id, CL_DEVICE_TYPE_DEFAULT, 1, &device_id,
-                       &ret_num_devices);
-  std::cerr << getErrorString(ret) << std::endl;
+  const std::string rot13Kernel = R"===(
+  kernel void rot13(global char* in, global char* out)
+{
+  int num = get_global_id(0);
+  char c = in[num];
+  if ('a' <= c && c <= 'z') {
+    out[num] = ((c - 'a') + 13) % 26 + 'a';
+  } else if ('A' <= c && c <= 'Z') {
+    out[num] = ((c - 'A') + 13) % 26 + 'A';
+  } else {
+    out[num] = c;
+  }
+}
+)===";
+  cl::Program program(rot13Kernel);
+  try {
+    // Compile
+    program.build("-cl-std=CL2.0");
+  } catch (cl::BuildError e) {
+    // Catch Compile failture and print diagnostics
+    std::cerr << "Error building program game_of_life_kernel2.cl: " << e.what() << "\n";
+    for (auto &pair : e.getBuildLog()) {
+      std::cerr << pair.second << std::endl;
+    }
 
-  // Create an OpenCL context
-  cl_context context = clCreateContext(NULL, 1, &device_id, NULL, NULL, &ret);
-
-  // Create a command queue
-  cl_command_queue command_queue =
-      clCreateCommandQueue(context, device_id, 0, &ret);
-
-  // Create memory buffers on the device for each vector
-  cl_mem cells_mem_obj =
-      clCreateBuffer(context, CL_MEM_ALLOC_HOST_PTR,
-                     GRIDSIZE_X * GRIDSIZE_Y * sizeof(bool), NULL, &ret);
-  cl_mem oldcells_mem_obj =
-      clCreateBuffer(context, CL_MEM_ALLOC_HOST_PTR,
-                     GRIDSIZE_X * GRIDSIZE_Y * sizeof(bool), NULL, &ret);
-
-  // Create a program from the kernel source
-  cl_program program =
-      clCreateProgramWithSource(context, 1, (const char **)&source_str,
-                                (const size_t *)&source_size, &ret);
-
-  // Build the program
-  ret = clBuildProgram(program, 1, &device_id, NULL, NULL, NULL);
-
-  std::cerr << getErrorString(ret) << std::endl;
-
-  // Create the OpenCL kernel
-  cl_kernel kernel = clCreateKernel(program, "game_of_life", &ret);
+    return EXIT_FAILURE;
+  }
 
   srand(time(NULL));
   SDL_Window *window;
@@ -370,30 +384,6 @@ int main(int argc, char *argv[]) {
 
     bool render = step % RENDER == 0;
 
-    ret = clEnqueueWriteBuffer(command_queue, oldcells_mem_obj, CL_TRUE, 0,
-                               GRIDSIZE_X * GRIDSIZE_Y * sizeof(bool), &cells,
-                               0, NULL,
-                               NULL); // send current cell status to opencl
-    std::cerr << getErrorString(ret) << std::endl;
-
-    ret = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void *)&oldcells_mem_obj);
-    std::cerr << getErrorString(ret) << std::endl;
-    ret = clSetKernelArg(kernel, 1, sizeof(cl_mem), (void *)&cells_mem_obj);
-    std::cerr << getErrorString(ret) << std::endl;
-
-    // Execute the OpenCL kernel on the list
-    size_t global_item_size =
-        GRIDSIZE_X * GRIDSIZE_Y;  // Process the entire lists
-    size_t local_item_size = 512; // Divide work items into groups of 64
-    ret = clEnqueueNDRangeKernel(command_queue, kernel, 1, NULL,
-                                 &global_item_size, &local_item_size, 0, NULL,
-                                 NULL);
-    std::cerr << getErrorString(ret) << std::endl;
-
-    ret = clEnqueueReadBuffer(command_queue, cells_mem_obj, CL_TRUE, 0,
-                              GRIDSIZE_X * GRIDSIZE_Y * sizeof(bool), &cells, 0,
-                              NULL, NULL); // read generated array to cells
-    std::cerr << getErrorString(ret) << std::endl;
     if (render) {
       SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
       SDL_RenderClear(renderer);
