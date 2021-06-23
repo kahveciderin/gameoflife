@@ -371,10 +371,7 @@ int main(int argc, char *argv[]) {
     bool render = step % RENDER == 0;
 
     bool oldcells[GRIDSIZE_X * GRIDSIZE_Y];
-    for (int i = 0; i < GRIDSIZE_X * GRIDSIZE_Y; i++) {
-
-      oldcells[i] = cells[i];
-    }
+    memcpy(&oldcells, &cells, GRIDSIZE_X * GRIDSIZE_Y * sizeof(bool));
 
     ret = clEnqueueWriteBuffer(command_queue, oldcells_mem_obj, CL_TRUE, 0,
                                GRIDSIZE_X * GRIDSIZE_Y * sizeof(bool),
