@@ -8,22 +8,19 @@
 #include <string>
 #include <ctype.h>
 
+#include <sys/time.h>
+
 using namespace std;
 
 #define GRIDSIZE 512
 #define SCALE 1
 
-#define RENDER 8
+#define RENDER 1
 //#define RGB
-int valueinarray(uint8_t val, uint8_t arr[])
+
+float timedifference_msec(struct timeval t0, struct timeval t1)
 {
-    int a;
-    for (a = 0; a < 11; a++)
-    {
-        if (arr[a] == val)
-            return 1;
-    }
-    return 0;
+    return (t1.tv_sec - t0.tv_sec) * 1000.0f + (t1.tv_usec - t0.tv_usec) / 1000.0f;
 }
 
 int main(int argc, char *argv[])
@@ -242,6 +239,8 @@ int main(int argc, char *argv[])
         bneigh[i] = born[i];
     }
 
+    struct timeval oldtime;
+    gettimeofday(&oldtime, 0);
     while (run)
     {
 
@@ -350,5 +349,9 @@ int main(int argc, char *argv[])
         }
         // char a;
         // scanf("%c", &a);
+        struct timeval newtime;
+        gettimeofday(&newtime, 0);
+        printf("Frame time: %f ms\n", timedifference_msec(oldtime, newtime));
+        oldtime = newtime;
     }
 }

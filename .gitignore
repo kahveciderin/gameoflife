@@ -1,0 +1,5 @@
+main
+.ccls-cache/
+*.rle
+ocl
+straight
