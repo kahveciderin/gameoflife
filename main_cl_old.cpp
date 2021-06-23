@@ -366,22 +366,19 @@ int main(int argc, char *argv[]) {
 
   struct timeval oldtime;
   gettimeofday(&oldtime, 0);
-
-  ret = clEnqueueWriteBuffer(command_queue, oldcells_mem_obj, CL_TRUE, 0,
-                             GRIDSIZE_X * GRIDSIZE_Y * sizeof(bool), &cells, 0,
-                             NULL,
-                             NULL); // send current cell status to opencl
-  std::cerr << getErrorString(ret) << std::endl;
-
   while (run) {
 
     bool render = step % RENDER == 0;
 
-    ret = clSetKernelArg(kernel, step % 2, sizeof(cl_mem),
-                         (void *)&oldcells_mem_obj);
+    ret = clEnqueueWriteBuffer(command_queue, oldcells_mem_obj, CL_TRUE, 0,
+                               GRIDSIZE_X * GRIDSIZE_Y * sizeof(bool), &cells,
+                               0, NULL,
+                               NULL); // send current cell status to opencl
     std::cerr << getErrorString(ret) << std::endl;
-    ret = clSetKernelArg(kernel, (step + 1) % 2, sizeof(cl_mem),
-                         (void *)&cells_mem_obj);
+
+    ret = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void *)&oldcells_mem_obj);
+    std::cerr << getErrorString(ret) << std::endl;
+    ret = clSetKernelArg(kernel, 1, sizeof(cl_mem), (void *)&cells_mem_obj);
     std::cerr << getErrorString(ret) << std::endl;
 
     // Execute the OpenCL kernel on the list
@@ -420,7 +417,7 @@ int main(int argc, char *argv[]) {
     }
     struct timeval newtime;
     gettimeofday(&newtime, 0);
-    printf("Frame time: %f ms\n", timedifference_msec(oldtime, newtime));
+    // printf("Frame time: %f ms\n", timedifference_msec(oldtime, newtime));
     oldtime = newtime;
   }
 }
